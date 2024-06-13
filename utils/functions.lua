@@ -45,6 +45,18 @@ function ChangeOverlays(name, visibility, tx_id, tx_normal, tx_material, tx_colo
 
 end
 
+function GetHeadIndex(ped)
+    local numComponents = Citizen.InvokeNative(0x90403E8107B60E81, ped)
+    if not numComponents then return false end
+        for i=0, numComponents-1, 1 do
+            local componentCategory = Citizen.InvokeNative(0x9b90842304c938a7, ped, i, 0, Citizen.ResultAsInteger())
+            if componentCategory == `heads` then
+                return i
+            end
+        end
+	return false
+end
+
 function ApplyOverlays(overlayTarget)
     if IsPedMale(overlayTarget) then
         current_texture_settings = texture_types["male"]
@@ -55,8 +67,9 @@ function ApplyOverlays(overlayTarget)
         Citizen.InvokeNative(0xB63B9178D0F58D82, textureId) -- reset texture
         Citizen.InvokeNative(0x6BEFAA907B076859, textureId) -- remove texture
     end
-    textureId = Citizen.InvokeNative(0xC5E7204F322E49EB, current_texture_settings.albedo,
-        current_texture_settings.normal, current_texture_settings.material); -- create texture
+    local index = GetHeadIndex(overlayTarget)
+    local _, albedo, normal, material = GetMetaPedAssetGuids(ped, index)
+    textureId = Citizen.InvokeNative(0xC5E7204F322E49EB, albedo, normal, material); -- create texture
     for k, v in pairs(overlay_all_layers) do
         if v.visibility ~= 0 then
             local overlay_id = Citizen.InvokeNative(0x86BB5FF45F193A02, textureId, v.tx_id, v.tx_normal, v.tx_material,
@@ -330,76 +343,39 @@ function EndCharacterCreatorCam()
     -- FreezeEntityPosition(PlayerPedId() , false)
 end
 
+function GetHashHead(aMale,num,color)
+    color = color or 1
+    num = num or 1
+    if color == 1 then color = 1
+    elseif color == 2 then color = 4
+    elseif color == 3 then color = 3
+    elseif color == 4 then color = 5
+    elseif color == 5 then color = 2
+    elseif color == 6 then color = 6
+    end
+    local suffix = ("%03d"):format(num or 1)..'_V_'..("%03d"):format(color or 1)
+    local sex = (aMale == true) and "M" or "F"
+    return GetHashKey(('CLOTHING_ITEM_%s_HEAD_%s'):format(sex,suffix))
+end
+
 function LoadBody(target, data)
     local output = GetSkinColorFromBodySize(tonumber(data.body_size), tonumber(data.skin_tone))
     local torso
     local legs
+    local head
+    local headNum = math.ceil((data.head or 1)/6)
     if IsPedMale(target) then
-        if tonumber(data.skin_tone) == 1 then
-            torso = ComponentsMale["BODIES_UPPER"][output]
-            legs = ComponentsMale["BODIES_LOWER"][output]
-            texture_types["male"].albedo = GetHashKey("mp_head_mr1_sc08_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 2 then
-            torso = ComponentsMale["BODIES_UPPER"][output]
-            legs = ComponentsMale["BODIES_LOWER"][output]
-            texture_types["male"].albedo = GetHashKey("mp_head_mr1_sc03_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 3 then
-            torso = ComponentsMale["BODIES_UPPER"][output]
-            legs = ComponentsMale["BODIES_LOWER"][output]
-            texture_types["male"].albedo = GetHashKey("mp_head_mr1_sc02_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 4 then
-            torso = ComponentsMale["BODIES_UPPER"][output]
-            legs = ComponentsMale["BODIES_LOWER"][output]
-            texture_types["male"].albedo = GetHashKey("mp_head_mr1_sc04_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 5 then
-            torso = ComponentsMale["BODIES_UPPER"][output]
-            legs = ComponentsMale["BODIES_LOWER"][output]
-            texture_types["male"].albedo = GetHashKey("MP_head_mr1_sc01_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 6 then
-            torso = ComponentsMale["BODIES_UPPER"][output]
-            legs = ComponentsMale["BODIES_LOWER"][output]
-            texture_types["male"].albedo = GetHashKey("MP_head_mr1_sc05_c0_000_ab")
-        else
-            torso = ComponentsMale["BODIES_UPPER"][output]
-            legs = ComponentsMale["BODIES_LOWER"][output]
-            texture_types["male"].albedo = GetHashKey("mp_head_mr1_sc02_c0_000_ab")
-        end
-
+        head = GetHashHead(true,headNum,data.skin_tone)
+        torso = ComponentsMale["BODIES_UPPER"][output]
+        legs = ComponentsMale["BODIES_LOWER"][output]
     else
-        if tonumber(data.skin_tone) == 1 then
-            torso = ComponentsFemale["BODIES_UPPER"][output]
-            legs = ComponentsFemale["BODIES_LOWER"][output]
-            texture_types["female"].albedo = GetHashKey("mp_head_fr1_sc08_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 2 then
-            torso = ComponentsFemale["BODIES_UPPER"][output]
-            legs = ComponentsFemale["BODIES_LOWER"][output]
-            texture_types["female"].albedo = GetHashKey("mp_head_fr1_sc03_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 3 then
-            torso = ComponentsFemale["BODIES_UPPER"][output]
-            legs = ComponentsFemale["BODIES_LOWER"][output]
-            texture_types["female"].albedo = GetHashKey("mp_head_fr1_sc02_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 4 then
-            torso = ComponentsFemale["BODIES_UPPER"][output]
-            legs = ComponentsFemale["BODIES_LOWER"][output]
-            texture_types["female"].albedo = GetHashKey("mp_head_fr1_sc04_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 5 then
-            torso = ComponentsFemale["BODIES_UPPER"][output]
-            legs = ComponentsFemale["BODIES_LOWER"][output]
-            texture_types["female"].albedo = GetHashKey("MP_head_fr1_sc01_c0_000_ab")
-        elseif tonumber(data.skin_tone) == 6 then
-            torso = ComponentsFemale["BODIES_UPPER"][output]
-            legs = ComponentsFemale["BODIES_LOWER"][output]
-            texture_types["female"].albedo = GetHashKey("mp_head_fr1_sc05_c0_000_ab")
-        else
-            torso = ComponentsFemale["BODIES_UPPER"][output]
-            legs = ComponentsFemale["BODIES_LOWER"][output]
-            texture_types["female"].albedo = GetHashKey("mp_head_fr1_sc02_c0_000_ab")
-
-        end
-
+        head = GetHashHead(false,headNum,data.skin_tone)
+        torso = ComponentsFemale["BODIES_UPPER"][output]
+        legs = ComponentsFemale["BODIES_LOWER"][output]
     end
     NativeSetPedComponentEnabled(target, tonumber(torso), false, true, true)
     NativeSetPedComponentEnabled(target, tonumber(legs), false, true, true)
+    NativeSetPedComponentEnabled(target, tonumber(head), false, true, true)
 end
 
 function GetSkinColorFromBodySize(body, color)
@@ -550,11 +526,12 @@ end
 
 
 function LoadHead(target, data)
+    local headNum = math.ceil((data.head or 1)/6)
     if IsPedMale(target) then
-        local head = ComponentsMale["heads"][tonumber(data.head) or 1]
+        local head = GetHashHead(true,headNum,data.skin_tone)
         NativeSetPedComponentEnabled(target, tonumber(head), false, true, true)
     else
-        local head = ComponentsFemale["heads"][tonumber(data.head) or 1]
+        local head = GetHashHead(false,headNum,data.skin_tone)
         NativeSetPedComponentEnabled(target, tonumber(head), false, true, true)
     end
 end
@@ -607,7 +584,6 @@ function FixIssues(target)
         NativeSetPedComponentEnabled(target, tonumber(ComponentsMale["BODIES_LOWER"][1]), false, true, true)
         NativeSetPedComponentEnabled(target, tonumber(ComponentsMale["heads"][1]), false, true, true)
         NativeSetPedComponentEnabled(target, tonumber(ComponentsMale["eyes"][1]), false, true, true)
-        texture_types["male"].albedo = GetHashKey("mp_head_mr1_sc08_c0_000_ab")
         Citizen.InvokeNative(0xD710A5007C2AC539, target, 0x1D4C528A, 0)
     else
         Citizen.InvokeNative(0x77FF8D35EEC6BBC4, target, 7, true)
@@ -617,7 +593,6 @@ function FixIssues(target)
         NativeSetPedComponentEnabled(target, tonumber(ComponentsFemale["heads"][1]), false, true, true)
         NativeSetPedComponentEnabled(target, tonumber(ComponentsFemale["eyes"][1]), false, true, true)
         -- NativeSetPedComponentEnabled( target, 0x1EECD215, false, true, true)
-        texture_types["female"].albedo = GetHashKey("mp_head_fr1_sc08_c0_000_ab")
     end
     Citizen.InvokeNative(0xD710A5007C2AC539, target, 0x3F1F01E5, 0)
     Citizen.InvokeNative(0xD710A5007C2AC539, target, 0xDA0E2C55, 0)
